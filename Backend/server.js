@@ -94,7 +94,7 @@ app.put('/', async (req, res) => {
 
 
 // Root route
-app.get('/', (req, res) => {
+app.get('/hello', (req, res) => {
   res.send('Hello from PassOP');
 });
 
