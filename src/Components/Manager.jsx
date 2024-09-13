@@ -12,7 +12,7 @@ const Manager = () => {
 
     const getPasswords = async () => {
         try {
-            let req = await fetch("http://localhost:3000/");
+            let req = await fetch("https://passop-mongo-1.onrender.com/");
             let passwords = await req.json();
             setPasswordArray(passwords);
         } catch (error) {
@@ -55,7 +55,7 @@ const Manager = () => {
             try {
                 if (isEditing) {
                     // Edit existing password
-                    await fetch("http://localhost:3000/", {
+                    await fetch("https://passop-mongo-1.onrender.com/", {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(form)
@@ -64,7 +64,7 @@ const Manager = () => {
                 } else {
                     // Save new password
                     const newPassword = { ...form, id: uuidv4() };
-                    await fetch("http://localhost:3000/", {
+                    await fetch("https://passop-mongo-1.onrender.com/", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(newPassword)
@@ -89,7 +89,7 @@ const Manager = () => {
         const confirmDelete = window.confirm("Do you really want to delete this password?");
         if (confirmDelete) {
             try {
-                await fetch("http://localhost:3000/", {
+                await fetch("https://passop-mongo-1.onrender.com/", {
                     method: "DELETE",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ id })
