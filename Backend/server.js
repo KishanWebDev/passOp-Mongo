@@ -16,7 +16,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(bodyparser.json()); // Middleware to parse JSON request body
-app.use(cors());
+app.use(cors()); // Enable CORS for all requests
 
 // Connect to MongoDB
 client.connect()
@@ -29,8 +29,10 @@ app.get('/', async (req, res) => {
     const db = client.db(dbName);
     const collection = db.collection('passwords');
     const findResult = await collection.find({}).toArray();
+    console.log(`Retrieved ${findResult.length} passwords`);
     res.json(findResult);
   } catch (err) {
+    console.error('Error fetching passwords:', err);
     res.status(500).send('Error fetching passwords');
   }
 });
@@ -38,67 +40,109 @@ app.get('/', async (req, res) => {
 // Save a password
 app.post('/', async (req, res) => {
   try {
-    const password = { ...req.body, _id: new ObjectId() }; // Assign an ObjectId
+    const password = req.body; // Client will send site, username, password
+    console.log('Saving new password:', password);
+    
     const db = client.db(dbName);
     const collection = db.collection('passwords');
-    const findResult = await collection.insertOne(password);
-    res.send({ success: true, result: findResult });
+    const insertResult = await collection.insertOne(password);
+    
+    console.log('Password saved with ID:', insertResult.insertedId);
+    res.status(201).json({ 
+      success: true, 
+      result: insertResult,
+      message: 'Password saved successfully'
+    });
   } catch (err) {
+    console.error('Error saving password:', err);
     res.status(500).send('Error saving password');
   }
 });
 
-
-// Delete a password by id
+// Delete a password by ID
 app.delete('/', async (req, res) => {
   try {
-    const password = req.body
+    const { _id } = req.body; // Get the MongoDB _id from request
+    console.log('Deleting password with ID:', _id);
+    
     const db = client.db(dbName);
     const collection = db.collection('passwords');
-    const deleteResult = await collection.deleteOne(password);
-    res.send({success: true, result: deleteResult});
+    
+    // Convert string ID to ObjectId if needed
+    const objectId = typeof _id === 'string' ? new ObjectId(_id) : _id;
+    
+    const deleteResult = await collection.deleteOne({ _id: objectId });
+    console.log('Delete result:', deleteResult);
+    
+    if (deleteResult.deletedCount === 0) {
+      return res.status(404).json({ success: false, message: 'Password not found' });
+    }
+    
+    res.json({
+      success: true, 
+      result: deleteResult,
+      message: 'Password deleted successfully'
+    });
   } catch (err) {
+    console.error('Error deleting password:', err);
     res.status(500).send('Error deleting password');
   }
 });
 
-// Update a password by id
+// Update a password by ID
 app.put('/', async (req, res) => {
   try {
     const { id, ...updateData } = req.body;
-
-    console.log('Updating password with ID:', id);  // Log ID
-    console.log('Update data:', updateData);        // Log update data
-
+    console.log('Updating password with ID:', id);
+    console.log('Update data:', updateData);
+    
     const db = client.db(dbName);
     const collection = db.collection('passwords');
-
-    // Convert the `id` string to an `ObjectId`
+    
+    // Convert string ID to ObjectId
+    const objectId = typeof id === 'string' ? new ObjectId(id) : id;
+    
     const updateResult = await collection.updateOne(
-      { _id: new ObjectId(id) },  // Ensure ID is in ObjectId format
-      { $set: updateData }        // Set the updated data
+      { _id: objectId },
+      { $set: updateData }
     );
-
-    console.log('Update result:', updateResult);  // Log update result
-
+    
+    console.log('Update result:', updateResult);
+    
     if (updateResult.matchedCount === 0) {
-      return res.status(404).send('Password not found');
+      return res.status(404).json({ success: false, message: 'Password not found' });
     }
-
-    res.send({ success: true, result: updateResult });
+    
+    res.json({
+      success: true, 
+      result: updateResult,
+      message: 'Password updated successfully'
+    });
   } catch (err) {
     console.error('Error updating password:', err);
     res.status(500).send('Error updating password');
   }
 });
 
-
-// Root route
+// Test route
 app.get('/hello', (req, res) => {
   res.send('Hello from PassOP');
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).send('Something went wrong!');
 });
 
 // Start the server
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
+});
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Closing MongoDB connection');
+  await client.close();
+  process.exit(0);
 });
